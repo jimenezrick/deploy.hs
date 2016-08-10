@@ -99,7 +99,7 @@ data Step = Proc FilePath [String] (Maybe Environment)
           | Failure String
 
 instance Show Step where
-    show (Proc prog args env) = printf "process: %s %s %s %s" (showEnv env) prog (unwords args)
+    show (Proc prog args env) = printf "process: %s %s %s" (showEnv env) prog (unwords args)
       where showEnv = maybe "" (unwords . map (\(k, v) -> k <> "=" <> v))
     show (Shell cmd)          = printf "shell:   %s" cmd
     show (Failure msg)        = printf "failure: %s" msg
