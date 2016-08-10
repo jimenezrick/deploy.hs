@@ -1,10 +1,12 @@
 import Control.Monad.IO.Class
 import Data.Text.Lazy
 
+import Data.List.NonEmpty
 import qualified Data.Text.Lazy.IO as T
 
 import Cook.Recipe
 import Cook.Catalog.Systemd.Container
+import Cook.Catalog.Debian.Apt as Apt
 import Cook.Catalog.Cjdns
 
 main :: IO ()

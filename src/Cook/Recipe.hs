@@ -6,6 +6,7 @@ module Cook.Recipe (
 
   , proc
   , proc'
+  , procEnv
   , sh
 
   , run
@@ -91,7 +92,9 @@ type Code = Int
 
 type Recipe = ExceptT (Trace, Code) (StateT Ctx IO)
 
-data Step = Proc FilePath [String] (Maybe [(String, String)])
+type Environment = [(String, String)]
+
+data Step = Proc FilePath [String] (Maybe Environment)
           | Shell String
           | Failure String
 
@@ -124,6 +127,9 @@ proc p a = Proc p a Nothing
 
 proc' :: FilePath -> Step
 proc' prog = Proc prog [] Nothing
+
+procEnv :: FilePath -> [String] -> Maybe Environment -> Step
+procEnv = Proc
 
 sh :: String -> Step
 sh = Shell
