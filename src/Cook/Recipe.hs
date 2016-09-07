@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Cook.Recipe (
     Recipe
   , RecipeConf (..)
@@ -5,6 +6,7 @@ module Cook.Recipe (
 
   , proc
   , proc'
+  , procEnv
   , sh
 
   , run
@@ -46,6 +48,7 @@ import Control.Monad.Morph
 import Control.Monad.State
 import Data.List
 import Data.Maybe
+import Data.Monoid
 import Data.Text.Lazy (Text, empty)
 import Network.BSD
 import System.Directory
@@ -89,14 +92,17 @@ type Code = Int
 
 type Recipe = ExceptT (Trace, Code) (StateT Ctx IO)
 
-data Step = Proc FilePath [String]
+type Environment = [(String, String)]
+
+data Step = Proc FilePath [String] (Maybe Environment)
           | Shell String
           | Failure String
 
 instance Show Step where
-    show (Proc prog args) = printf "process: %s %s" prog (unwords args)
-    show (Shell cmd)      = printf "shell:   %s" cmd
-    show (Failure msg)    = printf "failure: %s" msg
+    show (Proc prog args env) = printf "process: %s %s %s" (showEnv env) prog (unwords args)
+      where showEnv = maybe "" (unwords . map (\(k, v) -> k <> "=" <> v))
+    show (Shell cmd)          = printf "shell:   %s" cmd
+    show (Failure msg)        = printf "failure: %s" msg
 
 defRecipeConf :: IO RecipeConf
 defRecipeConf = do
@@ -117,10 +123,13 @@ createFsTree :: FilePath -> F.FsTree -> Recipe ()
 createFsTree base fstree = liftIO $ F.createFsTree base fstree -- TODO: Catch IO errors
 
 proc :: FilePath -> [String] -> Step
-proc = Proc
+proc p a = Proc p a Nothing
 
 proc' :: FilePath -> Step
-proc' prog = Proc prog []
+proc' prog = Proc prog [] Nothing
+
+procEnv :: FilePath -> [String] -> Maybe Environment -> Step
+procEnv = Proc
 
 sh :: String -> Step
 sh = Shell
@@ -208,9 +217,9 @@ run step = do
     sudo <- gets ctxSudo
     trace step
     case step of
-        Proc prog args -> runWith $ uncurry P.proc $ buildProcProg sudo prog args
-        Shell cmd      -> runWith $ P.shell $ buildShellCmd sudo cmd
-        Failure _      -> error "Recipe.run: unreachable case"
+        Proc prog args env -> runWith $ (uncurry P.proc $ buildProcProg sudo prog args) { env = env }
+        Shell cmd          -> runWith $ P.shell $ buildShellCmd sudo cmd
+        Failure _          -> error "Recipe.run: unreachable case"
 
 runProc :: FilePath -> [String] -> Recipe ()
 runProc = (fmap . fmap) run proc
@@ -243,9 +252,9 @@ runTakeRead step input = do
     sudo <- gets ctxSudo
     trace step
     case step of
-        Proc prog args -> runTakeReadWith (uncurry P.proc $ buildProcProg sudo prog args) input
-        Shell cmd      -> runTakeReadWith (P.shell $ buildShellCmd sudo cmd) input
-        Failure _      -> error "Recipe.runTakeRead: unreachable case"
+        Proc prog args env -> runTakeReadWith ((uncurry P.proc $ buildProcProg sudo prog args) { env = env }) input
+        Shell cmd          -> runTakeReadWith (P.shell $ buildShellCmd sudo cmd) input
+        Failure _          -> error "Recipe.runTakeRead: unreachable case"
 
 runTakeReadWith :: CreateProcess -> Text -> Recipe (Text, Text)
 runTakeReadWith p input = do
