@@ -39,6 +39,9 @@ library
                      , Cook.Catalog.Arch.Pacman
                      , Cook.Catalog.Arch.Rootfs
                      , Cook.Catalog.Debian.Apt
+                     , Cook.Catalog.Debian.Debootstrap
+                     , Cook.Catalog.Debian.Rootfs
+                     , Cook.Catalog.Debian.Suite
                      , Cook.Catalog.Systemd
                      , Cook.Catalog.Systemd.Container
                      , Cook.Catalog.User
